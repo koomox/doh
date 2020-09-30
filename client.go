@@ -11,16 +11,16 @@ import (
 )
 
 type Client struct {
-	client func() *http.Client
+	client *http.Client
 }
 
 func NewClient() *Client {
 	return &Client{
-		client: createClient,
+		client: makeClient(),
 	}
 }
 
-func createClient() *http.Client {
+func makeClient() *http.Client {
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -56,8 +56,7 @@ func createClient() *http.Client {
 }
 
 func (this *Client) get(req *http.Request, ctx context.Context) (buf []byte, err error) {
-	httpClient := createClient()
-	r, err := httpClient.Do(req.WithContext(ctx))
+	r, err := this.client.Do(req.WithContext(ctx))
 	if err != nil {
 		return
 	}

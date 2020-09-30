@@ -87,3 +87,11 @@ func (this *Client) Do(req *http.Request) ([]byte, error) {
 		return []byte(msg), nil
 	}
 }
+
+func Get(URL string) (b []byte, err error) {
+	var req *http.Request = nil
+	if req, err = http.NewRequest(http.MethodGet, URL, nil); err != nil {
+		return
+	}
+	return NewClient().Do(req)
+}

@@ -169,8 +169,8 @@ func createHttpClient() *http.Client {
 }
 
 func Request(req *http.Request, ctx context.Context) (buf []byte, err error) {
-	httpClient := createHttpClient()
-	r, err := httpClient.Do(req.WithContext(ctx))
+	client := createHttpClient()
+	r, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return
 	}

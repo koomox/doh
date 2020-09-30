@@ -2,12 +2,9 @@ package doh
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -15,7 +12,8 @@ import (
 )
 
 var (
-	seed = time.Now().UnixNano()
+	seed           = time.Now().UnixNano()
+	defaultTimeout = 5 * time.Second
 )
 
 // Question is dns query question
@@ -44,25 +42,13 @@ type Response struct {
 	Answer   []Answer   `json:"Answer"`
 }
 
-type Client struct {
-	request *http.Request
-	client  *http.Client
-}
-
-func NewClient(req *http.Request) *Client {
-	return &Client{
-		request: req,
-		client:  createHttpClient(),
-	}
-}
-
-func newHTTPClient() *http.Client {
+func newClient() *http.Client {
 	transport := &http.Transport{
-		IdleConnTimeout:       5 * time.Second,
+		IdleConnTimeout:       defaultTimeout,
 		DisableCompression:    true,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
-		ExpectContinueTimeout: 5 * time.Second,
+		TLSHandshakeTimeout:   defaultTimeout,
+		ResponseHeaderTimeout: defaultTimeout,
+		ExpectContinueTimeout: defaultTimeout,
 		DisableKeepAlives:     true,
 	}
 
@@ -97,7 +83,7 @@ func exchangeHTTPS(name string) (b []byte, err error) {
 
 	req.Header.Add("Accept", "application/dns-json")
 
-	client := newHTTPClient()
+	client := newClient()
 	if resp, err = client.Do(req); err != nil {
 		return
 	}
@@ -131,72 +117,4 @@ func Lookup(name string) (addrs []string, err error) {
 	}
 
 	return
-}
-
-func createHttpClient() *http.Client {
-	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return dialer.DialContext(ctx, network, addr)
-			}
-
-			ip, err := Lookup(host)
-			if err != nil {
-				return dialer.DialContext(ctx, network, addr)
-			}
-
-			r := rand.New(rand.NewSource(seed))
-			i := r.Intn(len(ip))
-			seed += int64(i)
-			return dialer.DialContext(ctx, network, net.JoinHostPort(ip[i], port))
-		},
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 5 * time.Second,
-		ExpectContinueTimeout: 5 * time.Second,
-		DisableKeepAlives:     true,
-	}
-
-	client := &http.Client{
-		Transport: transport,
-	}
-
-	return client
-}
-
-func Request(req *http.Request, ctx context.Context) (buf []byte, err error) {
-	client := createHttpClient()
-	r, err := client.Do(req.WithContext(ctx))
-	if err != nil {
-		return
-	}
-
-	defer r.Body.Close()
-	return ioutil.ReadAll(r.Body)
-}
-
-func Get(req *http.Request) (string, error) {
-	msgQ := make(chan string)
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	for i := 0; i < 20; i++ {
-		go func() {
-			if b, err := Request(req, ctx); err == nil {
-				cancel()
-				msgQ <- string(b)
-			}
-		}()
-	}
-
-	select {
-	case <-time.After(3000 * time.Millisecond):
-		cancel()
-		return "done", errors.New("time out i/o")
-	case msg := <-msgQ:
-		return msg, nil
-	}
 }

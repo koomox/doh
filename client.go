@@ -11,12 +11,12 @@ import (
 )
 
 type Client struct {
-	client *http.Client
+	NewClient func() *http.Client
 }
 
 func NewClient() *Client {
 	return &Client{
-		client: makeClient(),
+		NewClient: makeClient,
 	}
 }
 
@@ -56,7 +56,8 @@ func makeClient() *http.Client {
 }
 
 func (this *Client) get(req *http.Request, ctx context.Context) (buf []byte, err error) {
-	r, err := this.client.Do(req.WithContext(ctx))
+	client := this.NewClient()
+	r, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return
 	}

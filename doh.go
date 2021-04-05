@@ -118,7 +118,7 @@ func exchangeHTTPS(name, provider string) (b []byte, err error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func lookup(name, provider string) (addrs []string, err error) {
+func providerLookup(name, provider string) (addrs []string, err error) {
 	r, err := exchangeHTTPS(name, provider)
 	if err != nil {
 		return
@@ -146,7 +146,7 @@ func Lookup(name string)(addrs []string, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	for i := 0; i < len(dohJSONAPI); i++ {
 		go func(name, provider string){
-			address, e := lookup(name, provider)
+			address, e := providerLookup(name, provider)
 			if e == nil {
 				cancel()
 				msgQ <- append([]string{"success"}, address...)

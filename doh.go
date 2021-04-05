@@ -101,7 +101,8 @@ func exchangeHTTPS(name, provider string) (b []byte, err error) {
 		return
 	}
 
-	req.Header.Add("Accept", "application/dns-json")
+	req.Header.Set("Accept", "application/dns-json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36")
 
 	client := newClient()
 	if resp, err = client.Do(req); err != nil {
